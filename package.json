@@ -16,7 +16,8 @@
     "smoke": "node tools/smoke.mjs",
     "ui": "node tools/uicheck.mjs",
     "offline": "node tools/offlinecheck.mjs",
-    "gen:icons": "node tools/genIcons.mjs"
+    "gen:icons": "node tools/genIcons.mjs",
+    "live": "node tools/livecheck.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.6.6"

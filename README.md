@@ -15,6 +15,8 @@ Real-time .io-style arena survival. Top-down, single session, instant restart,
 90 seconds to 8 minutes. Installable PWA, mobile-first portrait plus desktop
 landscape, fully offline.
 
+**Play it: https://perdido101.github.io/sen/**
+
 ---
 
 ## Run it
@@ -127,6 +129,28 @@ first load with nothing to download.
 Palette, type and the style rules for anything generated later live in the
 build brief; the tokens are in `src/render/palette.ts` and `src/styles.css`.
 
+## Deploying
+
+`.github/workflows/deploy.yml` runs the headless checks, builds, and publishes
+to GitHub Pages. It is wired to `workflow_dispatch` as well as `push`, because
+pushes made with an app token do not always trigger Actions.
+
+The one thing to get right is the base path. A project site is served from
+`/<repo>/`, and a root-relative build dropped at a subpath fails in the least
+helpful way available: HTTP 200 on the page, a 404 on `terrain.png`, and a
+blank screen. `SEN_BASE` feeds `vite.config.ts`, which is the only place that
+knows about it — assets, the manifest's `start_url`/`scope`/icons, workbox's
+navigation fallback and `TERRAIN_URL` all derive from that one value. The
+workflow re-checks the built `index.html` afterwards, because a silently
+root-relative build is the one failure that still produces a green deploy.
+
+To serve from a root domain instead, leave `SEN_BASE` unset.
+
+Note the deploy job is deliberately *not* bound to the `github-pages`
+environment: that environment's deployment branch policy rejected the job
+before any step ran, which surfaces as a two-second failure with no log.
+`deploy-pages` only needs `pages: write` and `id-token: write`.
+
 ## Tests
 
 ```bash
@@ -135,6 +159,10 @@ npm run smoke         # boots the built game in Chromium, plays it, screenshots
 npm run ui            # walks every screen; fails on any dead end
 npm run offline       # loads, cuts the network, reloads, starts a run
 ```
+
+`npm run live -- <url>` plays the deployed site rather than a local build —
+a 200 on index.html proves nothing when the failure mode is a 404 on the
+terrain map.
 
 `npm run smoke -- <dir> --mass=3000 --win` drives the endgame and asserts the
 win sequence reaches the right card without waiting six minutes for it.

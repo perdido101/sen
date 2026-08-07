@@ -38,7 +38,6 @@ export default {
 
   'set.sound': 'Sound',
   'set.calm': 'Calm mode',
-  'set.language': 'Language',
   'set.debug': 'Debug overlay',
   'set.harsh': 'Harsh shred (instant death)',
 

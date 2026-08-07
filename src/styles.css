@@ -8,23 +8,6 @@
   font-style: normal;
   font-weight: 800;
   font-display: swap;
-  src: url('/fonts/fira800-greek.woff2') format('woff2');
-  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
-    U+03A3-03FF;
-}
-@font-face {
-  font-family: 'Fira Sans Condensed';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url('/fonts/fira800-greek-ext.woff2') format('woff2');
-  unicode-range: U+1F00-1FFF;
-}
-@font-face {
-  font-family: 'Fira Sans Condensed';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
   src: url('/fonts/fira800-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
     U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
@@ -40,23 +23,6 @@
     U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('/fonts/inter-greek.woff2') format('woff2');
-  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1,
-    U+03A3-03FF;
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('/fonts/inter-greek-ext.woff2') format('woff2');
-  unicode-range: U+1F00-1FFF;
-}
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -715,28 +681,6 @@ body {
 .switch[aria-checked='true']::after {
   transform: translateX(18px);
   background: var(--deep);
-}
-
-.lang {
-  display: flex;
-  gap: 4px;
-}
-
-.lang button {
-  font-family: var(--display);
-  font-size: 13px;
-  padding: 5px 11px;
-  border-radius: 5px;
-  border: 1px solid rgba(154, 166, 184, 0.35);
-  background: transparent;
-  color: var(--storm);
-  cursor: pointer;
-}
-
-.lang button[aria-pressed='true'] {
-  background: var(--crown);
-  color: var(--deep);
-  border-color: var(--crown);
 }
 
 /* ------------------------------------------------------------------ debug */

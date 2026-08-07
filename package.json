@@ -12,14 +12,16 @@
     "gen:terrain": "node tools/genTerrain.mjs",
     "sim:determinism": "node tools/headless.mjs",
     "check:purity": "node scripts/check-sim-purity.mjs",
-    "test": "npm run check:purity && npm run sim:determinism && npm run typecheck"
+    "test": "npm run check:purity && npm run sim:determinism && npm run typecheck",
+    "smoke": "node tools/smoke.mjs",
+    "ui": "node tools/uicheck.mjs",
+    "offline": "node tools/offlinecheck.mjs",
+    "gen:icons": "node tools/genIcons.mjs"
   },
   "dependencies": {
-    "howler": "^2.2.4",
     "pixi.js": "^8.6.6"
   },
   "devDependencies": {
-    "@types/howler": "^2.2.12",
     "playwright": "^1.62.1",
     "pngjs": "^7.0.0",
     "typescript": "^5.7.2",

@@ -7,7 +7,15 @@
  */
 
 import { Application, Container, Graphics } from 'pixi.js';
-import { RANK_EL_NINO, WARM_POOL_RX, WARM_POOL_RY, WARM_POOL_X, WARM_POOL_Y, clamp } from '../sim/constants.ts';
+import {
+  RANK_EL_NINO,
+  WARM_POOL_RX,
+  WARM_POOL_RY,
+  WARM_POOL_X,
+  WARM_POOL_Y,
+  clamp,
+  fieldRadius,
+} from '../sim/constants.ts';
 import type { SimEvent, WorldState } from '../sim/types.ts';
 import { Background } from './background.ts';
 import { Camera } from './camera.ts';
@@ -37,6 +45,15 @@ export class GameRenderer {
   /** 0..1, drives the world desaturating on death. */
   fade = 0;
   reducedMotion = false;
+
+  /**
+   * Dissipation: rings peel off one at a time over 0.8s. Held here rather than
+   * in StormsView because the storm is already gone from the simulation by the
+   * time this plays - death is a renderer beat, not a sim entity.
+   */
+  private peel = { t: -1, x: 0, y: 0, r: 0, next: 0 };
+  /** On the win, everything holds for a beat and the whole ocean flashes. */
+  private winFlash = -1;
 
   constructor(private app: Application, world: WorldState) {
     this.art = buildArt(app.renderer);
@@ -122,11 +139,21 @@ export class GameRenderer {
           this.particles.burst(e.x, e.y, 10, 200, C.crown, 0.6, 0.7);
           if (mine) this.cam.addTrauma(0.55);
           break;
-        case 'dissipate':
+        case 'dissipate': {
           this.particles.burst(e.x, e.y, 26, 300, C.storm, 1.0, 1.1);
-          this.particles.shock(e.x, e.y, 2.4, C.stormLit);
-          if (mine) this.cam.addTrauma(1);
+          if (mine) {
+            this.cam.addTrauma(1);
+            const s = w.storms[e.storm];
+            this.peel.t = 0;
+            this.peel.next = 0;
+            this.peel.x = e.x;
+            this.peel.y = e.y;
+            this.peel.r = fieldRadius(Math.max(10, s?.stats.peakMass ?? 10)) * 0.5;
+          } else {
+            this.particles.shock(e.x, e.y, 2.4, C.stormLit);
+          }
           break;
+        }
         case 'rankUp':
           if (mine) {
             this.cam.zoomPunch();
@@ -138,6 +165,7 @@ export class GameRenderer {
           break;
         case 'win':
           this.particles.burst(e.x, e.y, 40, 420, C.crown, 1.4, 1.4);
+          if (mine) this.winFlash = 0;
           break;
         case 'boostEject':
           this.particles.spawn(
@@ -171,11 +199,42 @@ export class GameRenderer {
     this.particles.update(dt, this.cam);
     this.minimap.update(w, dt);
 
-    // World desaturates over 400ms on death.
+    this.updatePeel(dt);
+
     this.desat.clear();
+
+    // The win: everything holds for a beat, then the whole ocean flashes to
+    // --warm-sea. This is the screenshot, so it gets its own pass over the top
+    // of the world and under the UI.
+    if (this.winFlash >= 0) {
+      this.winFlash += dt;
+      const hold = 0.45;
+      const t = (this.winFlash - hold) / 1.1;
+      if (this.winFlash > hold && t < 1) {
+        const a = this.reducedMotion ? 0.35 * (1 - t) : Math.sin(t * Math.PI) * 0.75;
+        this.desat.rect(0, 0, this.cam.w, this.cam.h).fill({ color: C.warmSea, alpha: a });
+      }
+      if (this.winFlash > hold + 1.1) this.winFlash = -1;
+      this.bg.intensity = 1;
+    }
+
+    // World desaturates over 400ms on death.
     if (this.fade > 0) {
       this.desat.rect(0, 0, this.cam.w, this.cam.h).fill({ color: C.deep, alpha: this.fade * 0.55 });
     }
+  }
+
+  /** Four rings, one every 0.2s, each wider than the last. */
+  private updatePeel(dt: number): void {
+    if (this.peel.t < 0) return;
+    this.peel.t += dt;
+    while (this.peel.next < 4 && this.peel.t >= this.peel.next * 0.2) {
+      const k = this.peel.next;
+      this.particles.shock(this.peel.x, this.peel.y, (this.peel.r / 30) * (0.7 + k * 0.5), C.stormLit);
+      this.particles.burst(this.peel.x, this.peel.y, 7, 150 + k * 90, C.debris, 0.8, 0.6);
+      this.peel.next++;
+    }
+    if (this.peel.t > 0.9) this.peel.t = -1;
   }
 
   reset(w: WorldState): void {
@@ -183,6 +242,8 @@ export class GameRenderer {
     this.particles.clear();
     this.scars.clear();
     this.fade = 0;
+    this.peel.t = -1;
+    this.winFlash = -1;
     const p = w.storms[w.playerId];
     if (p !== undefined) this.cam.snapTo(p.x, p.y);
   }

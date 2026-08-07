@@ -10,7 +10,6 @@ import { RunTracker, type BadgeId } from '../game/badges.ts';
 import { ClipRecorder } from '../game/clip.ts';
 import { awardMeta, load, save, unlock } from '../game/persist.ts';
 import { shareCard } from '../game/shareCard.ts';
-import { detectLang, setLang } from '../i18n/index.ts';
 import { GameRenderer } from '../render/renderer.ts';
 import {
   CAP_BOTS,
@@ -55,7 +54,6 @@ export class Game {
     private app: Application,
     private terrain: TerrainData,
   ) {
-    setLang(detectLang());
     const s = load();
 
     this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

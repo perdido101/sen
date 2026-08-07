@@ -9,7 +9,7 @@
 import { RANKS, clamp } from '../sim/constants.ts';
 import { BADGES, type BadgeId } from '../game/badges.ts';
 import { load, save, type Save } from '../game/persist.ts';
-import { getLang, onLangChange, setLang, t, type Lang } from '../i18n/index.ts';
+import { t } from '../i18n/index.ts';
 import { badgeIcon, lockedIcon } from './badgeIcons.ts';
 
 export interface HudModel {
@@ -109,8 +109,6 @@ export class UI {
       this.installEl,
       this.loadingEl,
     );
-
-    onLangChange(() => this.retranslate());
   }
 
   // ------------------------------------------------------------------ build
@@ -179,7 +177,7 @@ export class UI {
     p.append(mark, tag, play, seedRow, row, runs);
     p.dataset.role = 'menu';
 
-    // Retranslated by retranslate(); stash refs.
+    // Labels are applied by applyLabels(); stash the nodes it writes to.
     (p as never as Record<string, unknown>).__refs = {
       a: mark.querySelector('.a'),
       b: mark.querySelector('.b'),
@@ -229,27 +227,9 @@ export class UI {
       return row;
     };
 
-    const langRow = el('div', 'setting');
-    const langLabel = el('span', '', t('set.language'));
-    langLabel.dataset.key = 'set.language';
-    const langBox = el('div', 'lang');
-    for (const l of ['en', 'el'] as Lang[]) {
-      const b = el('button', '', l === 'en' ? 'EN' : 'ΕΛ');
-      b.setAttribute('aria-pressed', String(getLang() === l));
-      b.onclick = () => {
-        setLang(l);
-        for (const other of Array.from(langBox.children)) {
-          other.setAttribute('aria-pressed', String(other === b));
-        }
-      };
-      langBox.append(b);
-    }
-    langRow.append(langLabel, langBox);
-
     box.append(
       mk('sound', 'set.sound'),
       mk('calm', 'set.calm'),
-      langRow,
       mk('debug', 'set.debug'),
       mk('harsh', 'set.harsh'),
     );
@@ -299,14 +279,14 @@ export class UI {
     this.galleryEl.hidden = which !== 'gallery';
     this.settingsEl.hidden = which !== 'settings';
     if (which === 'gallery') this.renderGallery();
-    if (which === 'menu') this.retranslate();
+    if (which === 'menu') this.applyLabels();
   }
 
   offerInstall(): void {
     const s = load();
     if (s.installPromptDismissed || s.runs < 3) return;
     this.installEl.hidden = false;
-    this.retranslate();
+    this.applyLabels();
   }
 
   hideInstall(): void {
@@ -463,9 +443,9 @@ export class UI {
     refs.back.textContent = t('menu.back');
   }
 
-  // ------------------------------------------------------------ translation
+  // --------------------------------------------------------------- labels
 
-  private retranslate(): void {
+  private applyLabels(): void {
     const m = (this.menuEl as never as Record<string, Record<string, HTMLElement>>).__refs;
     m.a.textContent = t('app.title.a');
     m.b.textContent = t('app.title.b');

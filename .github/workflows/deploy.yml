@@ -90,9 +90,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    # Deliberately not bound to the `github-pages` environment. That
+    # environment carries a deployment branch policy this repo does not
+    # satisfy, and the job is then rejected before a single step runs - a
+    # two-second failure with no log to read. deploy-pages only needs
+    # pages: write and id-token: write, both granted above.
     steps:
       - uses: actions/deploy-pages@v4
         id: deployment

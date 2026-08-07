@@ -1,0 +1,16 @@
+{
+  "name": "@sen/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@sen/protocol": "*",
+    "@sen/sim": "*",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.98.4",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.51.0"
+  }
+}

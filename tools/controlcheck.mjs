@@ -40,6 +40,10 @@ const revive = (page, ang) =>
     const p = w.storms[w.playerId];
     p.alive = true;
     p.mass = Math.max(p.mass, 60);
+    // Measuring a heading takes a couple of seconds, and this is a busy map:
+    // without this the storm gets shredded mid-measurement and the reading is
+    // of a dead storm holding its last heading, not of the control under test.
+    p.invuln = 30;
     w.over = false;
     // Start each measurement from a known heading roughly a quarter turn from
     // the expected target, so "it already happened to point that way" cannot
@@ -63,6 +67,21 @@ async function startRun(page) {
   await page.waitForTimeout(1500);
 }
 
+/**
+ * Make sure there is a run in progress before measuring a key.
+ *
+ * Reviving the storm from the page is not enough: once a run has ended the
+ * controller stops feeding input to the sim entirely, and the storm then holds
+ * whatever heading it last had. Every key then "steers" to the same angle,
+ * which looks like three broken keys and is really one dead run. The primary
+ * button is "Again" on the game-over card and "Play" in the menu.
+ */
+async function ensurePlaying(page) {
+  if (await page.evaluate(() => window.__sen.phase() === 'playing')) return;
+  await page.click('.panel:not([hidden]) .btn.primary');
+  await page.waitForTimeout(1200);
+}
+
 // --------------------------------------------------------------- desktop
 {
   const page = await browser.newPage({ viewport: { width: 1100, height: 700 } });
@@ -84,12 +103,18 @@ async function startRun(page) {
     ['KeyA', 'A', -Math.PI / 2, Math.PI],
   ];
   for (const [key, label, from, want] of cases) {
+    await ensurePlaying(page);
     await revive(page, from);
     const before = await heading(page);
     await page.keyboard.down(key);
     await page.waitForTimeout(2200);
     await page.keyboard.up(key);
     const after = await heading(page);
+    const stillPlaying = await page.evaluate(() => window.__sen.phase() === 'playing');
+    if (!stillPlaying) {
+      problems.push(`${label}: the run ended mid-measurement, so the heading means nothing`);
+      continue;
+    }
     if (turned(before, after) < 0.25) {
       problems.push(`${label} did not turn the storm (${before.toFixed(2)} -> ${after.toFixed(2)})`);
     } else if (turned(after, want) > 0.35) {
@@ -135,6 +160,7 @@ async function startRun(page) {
     // as a real pointer sequence: page.mouse would be a fine pointer and the
     // stick deliberately ignores those.
     // Face east, then pull the stick west: the storm has half a turn to make.
+    await ensurePlaying(page);
     await revive(page, 0);
     const before = await heading(page);
     const cdp = await ctx.newCDPSession(page);
@@ -152,6 +178,9 @@ async function startRun(page) {
     await page.waitForTimeout(1600);
     const after = await heading(page);
     await touch('touchEnd', 0, 0);
+
+    const alive = await page.evaluate(() => window.__sen.phase() === 'playing');
+    if (!alive) problems.push('stick: the run ended mid-measurement');
 
     if (turned(before, after) < 0.25) {
       problems.push(`stick did not steer (${before.toFixed(2)} -> ${after.toFixed(2)})`);

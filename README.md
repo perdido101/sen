@@ -12,8 +12,8 @@ same title, and the debris field spinning around you will shred anyone who
 flies into it — including you.
 
 Real-time .io-style arena survival. Top-down, single session, instant restart,
-90 seconds to 8 minutes. Installable PWA, mobile-first portrait plus desktop
-landscape, fully offline.
+90 seconds to 8 minutes. Installable PWA, desktop first with a phone layout,
+fully offline in single player and 60 players to an instance online.
 
 **Play it: https://perdido101.github.io/sen/**
 
@@ -23,12 +23,31 @@ landscape, fully offline.
 
 ```bash
 npm install
-npm run gen:terrain   # writes public/terrain.png (~20s, only needed once)
-npm run gen:icons     # writes public/icons/*
-npm run dev
+npm run gen:terrain   # writes apps/client/public/terrain.png (~20s, once)
+npm run gen:icons     # writes apps/client/public/icons/*
+npm run dev           # the game, single player, no server needed
+npm run server        # optional: the authoritative server on :8787
 ```
 
 `npm run build` type-checks and bundles; `npm run preview` serves the build.
+Single player needs nothing but the client - the server is only for live
+instances. To join one, open the client with `?server=ws://host:8787`.
+
+### Layout
+
+It is an npm workspace, and the split is the architecture rather than
+housekeeping:
+
+```
+packages/sim        the whole game, headless and deterministic. No DOM, no Pixi.
+packages/protocol   the wire format, imported by both sides so it cannot drift
+apps/client         Pixi renderer, audio, UI, netcode, PWA
+apps/server         uWebSockets host: imports packages/sim and steps it
+```
+
+`apps/server` is an adapter, not a second game. It imports the same `step()`
+the browser runs. Any rule that exists twice would eventually exist in two
+different versions, and that is the failure this layout is built to prevent.
 
 ## The two mechanics
 
@@ -76,20 +95,33 @@ The renderer subscribes to state; state never knows the renderer exists. The
 sim publishes `SimEvent`s each step and the renderer, audio and badge tracker
 all read them without being able to influence the outcome.
 
-The multiplayer path later: run the same `step()` in Node at 20Hz
-authoritative, ship binary snapshots, interpolate client-side, swap bot `Input`
-for socket `Input`.
+That rule is what made multiplayer an adapter rather than a rewrite: the
+server runs the same `step()` in Node, ships binary snapshots, and swaps bot
+`Input` for socket `Input`. Bots and humans are still indistinguishable to the
+sim, so an instance backfilled with bots plays identically to a full one.
 
 ```
-src/sim/      the whole game, headless and deterministic
-src/bots/     four-state brain; emits Input, nothing else
-src/render/   Pixi layers, camera, procedural art
-src/audio/    procedural roar, synthesised SFX and music stems
-src/game/     badges, persistence, clip capture, share card
-src/ui/       plain HTML/CSS chrome over the canvas
-src/app/      fixed-step loop, input, controller
-tools/        terrain and icon generation, headless and browser tests
+packages/sim/src/sim/     the whole game, headless and deterministic
+packages/sim/src/bots/    four-state brain; emits Input, nothing else
+packages/protocol/src/    binary snapshots, deltas, input packets
+apps/client/src/render/   Pixi layers, camera, procedural art
+apps/client/src/audio/    procedural roar, synthesised SFX and music stems
+apps/client/src/net/      prediction, interpolation, reconciliation
+apps/client/src/game/     badges, persistence, clip capture, share card
+apps/client/src/ui/       plain HTML/CSS chrome over the canvas
+apps/client/src/app/      fixed-step loop, input, controller
+apps/server/src/          instances, matchmaking, anti-cheat, economy
+tools/                    terrain and icon generation, headless and browser tests
 ```
+
+There is a fifth rule, added when the server arrived:
+
+5. **A world under a remote authority does not decide outcomes.** An online
+   client sets `remoteAuthority` on its `WorldState` and the sim then refuses
+   to kill a storm, respawn one or declare a winner - it runs terrain, props,
+   stickmen, cities and weather from the server's seed and nothing else. A
+   local copy inventing its own outcomes is how a player ends up watching a
+   game-over card while the server has them alive and eating.
 
 ## The world
 
@@ -107,7 +139,7 @@ loaded once into a byte array; never `getImageData` per frame. The visible map
 is a separate stylized layer built from the same data at boot, so data and
 beauty stay decoupled.
 
-The world is 8192×4096 and wraps horizontally. **Every** distance, camera and
+The world is 16384×8192 and wraps horizontally. **Every** distance, camera and
 collision check goes through `wrapDeltaX` in `sim/constants.ts` — this is the
 single most common source of bugs in this project, so it is written once. The
 map's x=0 is 20°E, chosen so the warm pool sits mid-map instead of straddling
@@ -151,14 +183,75 @@ environment: that environment's deployment branch policy rejected the job
 before any step ran, which surfaces as a two-second failure with no log.
 `deploy-pages` only needs `pages: write` and `id-token: write`.
 
+## Multiplayer
+
+The server is authoritative and the client predicts only its own movement.
+
+| | |
+|---|---|
+| sim | 60Hz, the same `step()` the browser runs |
+| snapshots | 15Hz, binary, delta-compressed against the last frame the client held |
+| input | 30Hz, 5 bytes: sequence, steer angle, boost. That is the entire client authority surface |
+| area of interest | the client's viewport plus a 400-unit margin, both sides of the wrap seam |
+| prediction | movement only - never mass, never absorption, never a collision |
+| interpolation | everyone else, 100ms in the past |
+| correction | error bled off over 150ms; a correction past 900 units is a teleport and snaps |
+
+There is no lag compensation and no rewind. Debris fields are large and slow
+relative to 100ms, so present-time server-authoritative collision is accurate
+enough, and it removes an entire class of "he killed me from around the
+corner" bugs. That is a choice, not an omission.
+
+Instances hold 60 humans and backfill with bots to 80 storms, so a quiet
+instance still plays like a busy one. A player who leaves hands their storm
+back to the bots rather than deleting it.
+
+## Anti-cheat, and what it deliberately does not do
+
+Every run's seed and complete input log is recorded, and the server can
+re-simulate it and compare the result. That is the ground truth: a client can
+send any packet it likes, but the only thing it can say is "steer here, boost
+now", and mass forged in browser memory is overwritten by the next snapshot.
+
+Rate limits, packet-size limits, boost-toggle counters and a quantized-steering
+detector flag suspicious sessions. Flagged sessions are recorded, not
+disconnected mid-run - a false positive that ejects a real player is worse than
+a cheat that gets caught on review.
+
+## Economy
+
+Ads, revenue accounting, a devnet token and a mechanical buyback live in
+`apps/server`. Everything about them is off until configured, and the rules are
+constants rather than settings:
+
+- The buyback is **30% of net ad revenue, every 7 days, with no manual
+  trigger**. The percentage and cadence are published before the first
+  execution and the schedule advances by exactly one interval per run, so a
+  late or failed execution cannot bunch two together.
+- The token is **devnet only**. It grants no revenue share, no governance, no
+  claim on anything, and carries no promise of value. It touches nothing
+  inside the game - no token-gated play, ranks or matchmaking, ever.
+- `/treasury` renders the public dashboard from the ledger. Nothing on that
+  page is typed in by hand.
+
+`SETUP.md` lists every credential and external account, one at a time, with
+what breaks if it is missing.
+
 ## Tests
 
 ```bash
-npm test              # purity + determinism + typecheck
+npm test              # purity + determinism + typecheck + protocol + server
 npm run smoke         # boots the built game in Chromium, plays it, screenshots
 npm run ui            # walks every screen; fails on any dead end
 npm run offline       # loads, cuts the network, reloads, starts a run
+npm run controls      # WASD, arrows, pointer and the touch stick
+npm run netplay       # two real browsers on one instance, 150ms link, 2% loss
+npm run soak          # holds a full instance for N minutes, watches memory
 ```
+
+`npm run test:server -- 60 20` runs the 60-client acceptance: snapshot rate,
+bandwidth per client, sim time under load, and that a forged mass changes
+nothing. `npm run soak -- 60` is the hour-long memory run.
 
 `npm run live -- <url>` plays the deployed site rather than a local build —
 a 200 on index.html proves nothing when the failure mode is a 404 on the

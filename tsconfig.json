@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -16,7 +20,30 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    "types": ["vite/client", "vite-plugin-pwa/client"]
+    "types": [
+      "vite/client",
+      "vite-plugin-pwa/client",
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@sen/sim": [
+        "packages/sim/src/index.ts"
+      ],
+      "@sen/sim/*": [
+        "packages/sim/src/*"
+      ],
+      "@sen/protocol": [
+        "packages/protocol/src/index.ts"
+      ],
+      "@sen/protocol/*": [
+        "packages/protocol/src/*"
+      ]
+    }
   },
-  "include": ["src", "tools/types.d.ts"]
+  "include": [
+    "packages/*/src",
+    "apps/*/src",
+    "apps/client/vite.config.ts"
+  ]
 }

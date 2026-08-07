@@ -93,15 +93,71 @@ async function run(label, viewport) {
   // And back into a run, so restart is one tap with no dead end.
   await page.click('.panel:not([hidden]) .btn.primary');
   await page.waitForTimeout(900);
-  const playing = await page.evaluate(() => window.__sen.phase() === 'playing');
-  if (!playing) problems.push(`${label}: "Again" did not start a new run`);
+  const after = await page.evaluate(() => {
+    const w = window.__sen.world();
+    const p = w.storms[w.playerId];
+    return { phase: window.__sen.phase(), mass: p?.mass ?? -1, alive: p?.alive ?? false };
+  });
+  // 'dying' is a pass: the run started and the storm has already met something.
+  // Only a menu or a still-showing game-over card means the button did nothing.
+  if (after.phase !== 'playing' && after.phase !== 'dying') {
+    problems.push(
+      `${label}: "Again" did not start a new run (phase ${after.phase}, ` +
+        `mass ${after.mass.toFixed(1)}, alive ${after.alive})`,
+    );
+  }
 
+  await page.close();
+}
+
+/**
+ * The online entry point, and what happens when the server is not there.
+ *
+ * A button that silently does nothing is the worst version of this: the menu
+ * must either not offer online play at all, or tell the player it could not
+ * connect and leave single player one click away.
+ */
+async function onlineEntry() {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  page.on('pageerror', (e) => problems.push(`online: pageerror ${e.message}`));
+
+  // No server here: nothing was configured at build time and no ?server= given.
+  await page.goto(`http://localhost:${PORT}${BASE}?debug`, { waitUntil: 'load' });
+  await page.waitForSelector('.panel .wordmark', { timeout: 60000 });
+  const hiddenByDefault = await page.evaluate(() => {
+    const b = document.querySelector('.btn.online');
+    return b === null || b.hidden;
+  });
+  if (!hiddenByDefault) problems.push('online: the button is offered with no server configured');
+
+  // Now point at a port with nothing on it.
+  await page.goto(`http://localhost:${PORT}${BASE}?debug&server=ws://127.0.0.1:9`, {
+    waitUntil: 'load',
+  });
+  await page.waitForSelector('.panel .wordmark', { timeout: 60000 });
+  const offered = await page.evaluate(() => {
+    const b = document.querySelector('.btn.online');
+    return b !== null && !b.hidden;
+  });
+  if (!offered) problems.push('online: the button is missing with a server configured');
+  else {
+    await page.click('.btn.online');
+    await page.waitForTimeout(9500);
+    const text = await page.evaluate(() => document.querySelector('.btn.online')?.textContent ?? '');
+    if (!/unreachable/i.test(text)) {
+      problems.push(`online: an unreachable server left the menu saying "${text}"`);
+    }
+    const stillMenu = await page.evaluate(() => window.__sen.phase() === 'menu');
+    if (!stillMenu) problems.push('online: a failed connection did not leave the player in the menu');
+    await page.screenshot({ path: `${OUT}/online-unreachable.png` });
+  }
   await page.close();
 }
 
 await run('portrait', { width: 720, height: 1280 });
 await run('landscape', { width: 1280, height: 720 });
 await run('small-portrait', { width: 360, height: 640 });
+await onlineEntry();
 
 await browser.close();
 

@@ -13,17 +13,17 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { PNG } from 'pngjs';
 
-import { createWorld } from '../src/sim/world.ts';
-import { step } from '../src/sim/step.ts';
-import { InputCollector } from '../src/bots/drive.ts';
-import { rankOf, RANKS } from '../src/sim/constants.ts';
+import { createWorld } from '../packages/sim/src/sim/world.ts';
+import { step } from '../packages/sim/src/sim/step.ts';
+import { InputCollector } from '../packages/sim/src/bots/drive.ts';
+import { rankOf, RANKS } from '../packages/sim/src/sim/constants.ts';
 
 const STEPS = Number(process.argv[2] ?? 1000);
 const SEED = Number(process.argv[3] ?? 12345);
-const BOTS = 24;
+const BOTS = Number(process.argv[4] ?? 64);
 
 function loadTerrain() {
-  const png = PNG.sync.read(readFileSync(new URL('../public/terrain.png', import.meta.url)));
+  const png = PNG.sync.read(readFileSync(new URL('../apps/client/public/terrain.png', import.meta.url)));
   return { w: png.width, h: png.height, data: new Uint8ClampedArray(png.data) };
 }
 

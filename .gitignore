@@ -4,3 +4,5 @@ dev-dist/
 *.local
 .DS_Store
 .vite/
+.secrets/
+.data/

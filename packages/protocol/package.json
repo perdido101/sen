@@ -1,0 +1,14 @@
+{
+  "name": "@sen/protocol",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Binary wire format shared by client and server. One definition, both ends.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@sen/sim": "*"
+  }
+}

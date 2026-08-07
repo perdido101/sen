@@ -70,6 +70,11 @@ jobs:
       - name: Build
         env:
           SEN_BASE: ${{ steps.base.outputs.base }}
+          # Optional. Set the SEN_SERVER repository variable to a wss:// URL to
+          # reveal the online entry point; empty ships single player only,
+          # which is the correct default - a button that cannot connect is
+          # worse than no button.
+          SEN_SERVER: ${{ vars.SEN_SERVER }}
         run: npm run build
 
       - name: Fail if the build did not pick up the base path
@@ -78,14 +83,15 @@ jobs:
         # rather than trusting the env var.
         run: |
           BASE="${{ steps.base.outputs.base }}"
+          DIST=apps/client/dist
           echo "expecting base $BASE"
-          grep -q "src=\"${BASE}assets/" dist/index.html \
+          grep -q "src=\"${BASE}assets/" $DIST/index.html \
             || { echo "index.html is not base-prefixed"; exit 1; }
-          test -f dist/terrain.png || { echo "terrain.png missing"; exit 1; }
+          test -f $DIST/terrain.png || { echo "terrain.png missing"; exit 1; }
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: apps/client/dist
 
   deploy:
     needs: build

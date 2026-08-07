@@ -10,8 +10,8 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SIM = join(ROOT, 'src/sim');
-const BOTS = join(ROOT, 'src/bots');
+const SIM = join(ROOT, 'packages/sim/src/sim');
+const BOTS = join(ROOT, 'packages/sim/src/bots');
 
 const BANNED_IMPORTS = [
   /from\s+['"]pixi\.js['"]/,
@@ -52,9 +52,29 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * The sim, the protocol and the server all run under Node's strip-only
+ * TypeScript mode, which cannot handle syntax that emits code. A parameter
+ * property or an enum compiles fine and then fails at server boot, which is
+ * the worst possible place to find out.
+ */
+const STRIP_UNSAFE = [
+  { re: /constructor\s*\([^)]*\b(private|public|protected|readonly)\s+\w+\s*:/s,
+    what: 'a constructor parameter property' },
+  { re: /^\s*(export\s+)?(const\s+)?enum\s+\w+/m, what: 'an enum' },
+  { re: /^\s*@\w+/m, what: 'a decorator' },
+  { re: /\bnamespace\s+\w+\s*\{/, what: 'a namespace' },
+];
+
+const STRIP_ROOTS = [
+  join(ROOT, 'packages/sim/src'),
+  join(ROOT, 'packages/protocol/src'),
+  join(ROOT, 'apps/server/src'),
+];
+
 const files = [...walk(SIM), ...walk(BOTS)];
 if (files.length === 0) {
-  console.error('check:purity found no files under src/sim - wrong path?');
+  console.error('check:purity found no files under packages/sim/src/sim - wrong path?');
   process.exit(1);
 }
 
@@ -93,9 +113,26 @@ for (const file of files) {
   }
 }
 
+for (const root of STRIP_ROOTS) {
+  for (const file of walk(root)) {
+    const rel = relative(ROOT, file);
+    const code = stripCommentsAndStrings(readFileSync(file, 'utf8'));
+    for (const { re, what } of STRIP_UNSAFE) {
+      if (re.test(code)) {
+        console.error(`${rel}: ${what} - Node's strip-only mode cannot run this`);
+        failures++;
+      }
+    }
+  }
+}
+
 if (failures > 0) {
   console.error(`\ncheck:purity FAILED with ${failures} violation(s) across ${files.length} files.`);
   process.exit(1);
 }
 
-console.log(`check:purity OK - ${files.length} files in src/sim and src/bots are headless.`);
+const stripped = STRIP_ROOTS.reduce((n, r) => n + walk(r).length, 0);
+console.log(
+  `check:purity OK - ${files.length} files in packages/sim are headless, ` +
+  `${stripped} files across sim/protocol/server are strip-safe.`,
+);

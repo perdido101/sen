@@ -1,0 +1,13 @@
+{
+  "name": "@sen/sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The headless deterministic simulation. Imported by both the client and the server - never forked.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./constants": "./src/sim/constants.ts",
+    "./types": "./src/sim/types.ts",
+    "./*": "./src/*"
+  }
+}

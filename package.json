@@ -4,26 +4,35 @@
   "version": "1.0.0",
   "type": "module",
   "description": "SUPER EL NINO - real-time io-style storm arena. Publisher: WildBox.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
+    "dev": "npm run dev -w @sen/client",
+    "build": "npm run build -w @sen/client",
+    "preview": "npm run preview -w @sen/client",
     "typecheck": "tsc --noEmit",
+    "server": "node apps/server/src/main.ts",
     "gen:terrain": "node tools/genTerrain.mjs",
+    "gen:icons": "node tools/genIcons.mjs",
     "sim:determinism": "node tools/headless.mjs",
     "check:purity": "node scripts/check-sim-purity.mjs",
-    "test": "npm run check:purity && npm run sim:determinism && npm run typecheck",
+    "test": "npm run check:purity && npm run sim:determinism && npm run typecheck && npm run test:protocol && npm run test:server",
+    "test:protocol": "node tools/protocol-test.mjs",
+    "test:server": "node tools/server-test.mjs",
+    "soak": "node tools/soak.mjs",
     "smoke": "node tools/smoke.mjs",
     "ui": "node tools/uicheck.mjs",
     "offline": "node tools/offlinecheck.mjs",
-    "gen:icons": "node tools/genIcons.mjs",
+    "controls": "node tools/controlcheck.mjs",
     "live": "node tools/livecheck.mjs",
-    "controls": "node tools/controlcheck.mjs"
-  },
-  "dependencies": {
-    "pixi.js": "^8.6.6"
+    "netplay": "node tools/netplay-test.mjs",
+    "token:init": "node tools/token-init.mjs"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/pngjs": "^6.0.5",
     "playwright": "^1.62.1",
     "pngjs": "^7.0.0",
     "typescript": "^5.7.2",

@@ -69,7 +69,7 @@ function draw(size, maskable) {
   return png;
 }
 
-mkdirSync(new URL('../public/icons/', import.meta.url), { recursive: true });
+mkdirSync(new URL('../apps/client/public/icons/', import.meta.url), { recursive: true });
 
 for (const [name, size, maskable] of [
   ['icon-192.png', 192, false],
@@ -78,6 +78,6 @@ for (const [name, size, maskable] of [
   ['logo.png', 1024, false],
 ]) {
   const png = draw(size, maskable);
-  writeFileSync(new URL(`../public/icons/${name}`, import.meta.url), PNG.sync.write(png));
+  writeFileSync(new URL(`../apps/client/public/icons/${name}`, import.meta.url), PNG.sync.write(png));
   console.log(`wrote public/icons/${name}`);
 }

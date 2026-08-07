@@ -15,9 +15,9 @@
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { PNG } from 'pngjs';
-import { CITY_DATA } from '../src/data/cities.ts';
-import { MAP_LON_ORIGIN, CITY_RADIUS, WORLD_W, WORLD_H } from '../src/sim/constants.ts';
-import { valueNoise } from '../src/sim/rng.ts';
+import { CITY_DATA } from '../packages/sim/src/data/cities.ts';
+import { MAP_LON_ORIGIN, CITY_RADIUS, WORLD_W, WORLD_H } from '../packages/sim/src/sim/constants.ts';
+import { valueNoise } from '../packages/sim/src/sim/rng.ts';
 
 const W = 4096;
 const H = 2048;
@@ -392,8 +392,8 @@ for (const c of CITY_DATA) {
   }
 }
 
-mkdirSync(new URL('../public/', import.meta.url), { recursive: true });
-const out = new URL('../public/terrain.png', import.meta.url);
+mkdirSync(new URL('../apps/client/public/', import.meta.url), { recursive: true });
+const out = new URL('../apps/client/public/terrain.png', import.meta.url);
 writeFileSync(out, PNG.sync.write(png, { colorType: 6 }));
 
 // Quick sanity report.

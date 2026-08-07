@@ -80,6 +80,15 @@ export interface Storm {
   botTimer: number;
   botTarget: number;
   botPersonality: number;
+  /**
+   * Where a FEED-state bot is heading. Recomputed on the decision tick only:
+   * the searches behind it (nearest loose debris, probing terrain for land or
+   * warmer water) are far too expensive to run per bot per frame once there
+   * are 64 of them.
+   */
+  botAimX: number;
+  botAimY: number;
+  botAimValid: boolean;
   /** La Nina: the largest bot in any run. Cold-blue, Hunter, contests the pool. */
   isLaNina: boolean;
 

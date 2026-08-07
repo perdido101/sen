@@ -212,6 +212,25 @@ export function botInput(w: WorldState, s: Storm, dt: number, out: Input): void 
       } else {
         s.botState = FEED;
         s.botTarget = -1;
+        // Everything expensive happens here, on the decision tick, and the
+        // result is cached: the terrain probe is up to 56 samples and the
+        // debris sweep is the whole pool, which at 64 bots would be a hundred
+        // thousand checks a frame.
+        const pull = biomePull(w, s, rank);
+        if (pull !== null) {
+          s.botAimX = pull.x;
+          s.botAimY = pull.y;
+          s.botAimValid = true;
+        } else {
+          const di = nearestDebris(w, s);
+          if (di >= 0) {
+            s.botAimX = w.debris[di].x;
+            s.botAimY = w.debris[di].y;
+            s.botAimValid = true;
+          } else {
+            s.botAimValid = false;
+          }
+        }
       }
     }
   }
@@ -268,14 +287,11 @@ export function botInput(w: WorldState, s: Storm, dt: number, out: Input): void 
     }
 
     default: {
-      // FEED. Chase loose debris first - a kill's scatter is the richest thing
-      // on the map - then fall back to whatever the terrain wants.
-      const di = nearestDebris(w, s);
-      const pull = biomePull(w, s, rank);
-      if (pull !== null) {
-        steer = angTo(s, pull.x, pull.y);
-      } else if (di >= 0) {
-        steer = angTo(s, w.debris[di].x, w.debris[di].y);
+      // FEED. Head for whatever the last decision tick picked: the terrain's
+      // pull if it had an opinion, otherwise the richest loose debris on the
+      // map, which after a kill is the best meal going.
+      if (s.botAimValid) {
+        steer = angTo(s, s.botAimX, s.botAimY);
       } else {
         // Wander with a slow drift rather than a jitter, so big bots read as
         // deliberate rather than twitchy.

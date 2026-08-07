@@ -15,6 +15,7 @@ import {
   SST_W,
   WARM_SST,
   WARM_WATER_MPS,
+  WARM_WATER_SPEED,
   WATER_SPEED,
   WORLD_H,
   WORLD_W,
@@ -161,7 +162,7 @@ export function terrainEffect(
     const temp = sstAt(w, x, y);
     const warm = temp >= WARM_SST;
     EFFECT.warm = warm;
-    EFFECT.speedMul = WATER_SPEED;
+    EFFECT.speedMul = warm ? WARM_WATER_SPEED : WATER_SPEED;
     const r = clamp(rank - 1, 0, 6);
     EFFECT.massPerSec = warm ? WARM_WATER_MPS[r] : COLD_WATER_MPS[r];
     return EFFECT;

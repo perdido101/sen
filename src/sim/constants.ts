@@ -87,7 +87,12 @@ export function wrapDist(ax: number, ay: number, bx: number, by: number): number
 export const START_MASS = 10;
 export const MIN_MASS = 8;
 export const CORE_RADIUS_CAP = 95;
-export const BASE_SPEED = 260;
+/**
+ * Base speed, world units/sec. The world doubled to Earth proportions, and a
+ * storm that crossed the old map in 30s took a minute on the new one, which
+ * read as wading. A lap is now ~37s at Dust Devil pace.
+ */
+export const BASE_SPEED = 520;
 
 export const SUCTION_MUL = 2.6;
 export const EYE_MUL = 0.55;
@@ -113,8 +118,18 @@ export function sizeFactor(mass: number): number {
   const f = Math.log(mass / 10) / LOG_500;
   return f < 0 ? 0 : f > 1 ? 1 : f;
 }
+/**
+ * Size costs speed, but far less than it used to.
+ *
+ * The brief's 0.35 made a Megastorm feel like it was dragging an anchor. The
+ * tension that matters is turning, not top speed - maxTurnRate still falls by
+ * more than half across the range, so a big storm is still committed to its
+ * line and still cannot corner. It just no longer feels slow while it does it.
+ */
+export const SIZE_SPEED_PENALTY = 0.12;
+
 export function stormSpeed(mass: number): number {
-  return BASE_SPEED * (1 - 0.35 * sizeFactor(mass));
+  return BASE_SPEED * (1 - SIZE_SPEED_PENALTY * sizeFactor(mass));
 }
 export function maxTurnRate(mass: number): number {
   const f = sizeFactor(mass);
@@ -180,8 +195,17 @@ export const BIOME_SPEED = [
   0.85, // ice     -15%
 ];
 
-/** Water speed bonus, both cold and warm. */
+/**
+ * Water speed. Cold water is the brief's flat +10%.
+ *
+ * Warm water is faster still, and that is a game rule rather than meteorology:
+ * a real storm over a warm sea intensifies, it does not accelerate - its
+ * translation speed comes from the steering winds around it. But the warm pool
+ * is where the endgame lives, and making it the fastest water as well as the
+ * richest gives the map inversion a second thing the player can feel.
+ */
 export const WATER_SPEED = 1.1;
+export const WARM_WATER_SPEED = 1.28;
 export const ICE_SPEED = 0.85;
 
 /** Sea surface temperature (0-255) at or above which water counts as warm. */
@@ -297,7 +321,11 @@ export function warmPoolT(x: number, y: number): number {
 
 export const CAP_LOOSE_DEBRIS = 900;
 export const CAP_STICKMEN = 400;
-export const CAP_BOTS = 24;
+/**
+ * Rival count. Brief 2 backfills every instance to ~80 total storms, so the
+ * single-player world matches what a live server will feel like.
+ */
+export const CAP_BOTS = 64;
 export const CAP_DETAIL_CITIES = 6;
 export const CAP_FIELD_ITEMS = 150;
 

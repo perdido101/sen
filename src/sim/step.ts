@@ -141,8 +141,29 @@ function buildHash(w: WorldState): void {
 // Stickmen
 // ---------------------------------------------------------------------------
 
+const nearbyStorms: Storm[] = [];
+
+/**
+ * Stickmen only exist within MAN_RANGE of the player, so the only storms that
+ * can ever matter to one are the storms near the player. Collecting them once
+ * a frame turns a 400 x 65 scan into 400 x 3.
+ */
+function collectNearbyStorms(w: WorldState): void {
+  nearbyStorms.length = 0;
+  const p = w.storms[w.playerId];
+  if (p === undefined) return;
+  const reach = 4200;
+  for (let i = 0; i < w.storms.length; i++) {
+    const s = w.storms[i];
+    if (!s.alive) continue;
+    const dx = wrapDeltaX(p.x, s.x);
+    const dy = s.y - p.y;
+    if (dx * dx + dy * dy < reach * reach) nearbyStorms.push(s);
+  }
+}
+
 function updateStickmen(w: WorldState, dt: number): void {
-  const storms = w.storms;
+  const storms = nearbyStorms;
   for (let i = 0; i < w.stickmen.length; i++) {
     const m = w.stickmen[i];
     if (!m.active) continue;
@@ -566,6 +587,7 @@ export function step(w: WorldState, inputs: Map<number, Input>): void {
   streamChunks(w);
   updateCityDetail(w);
   buildHash(w);
+  collectNearbyStorms(w);
   updateStickmen(w, dt);
 
   const player = w.storms[w.playerId];

@@ -85,6 +85,9 @@ export function makeStorm(id: number, kind: 'player' | 'bot', name: string, x: n
     botTimer: 0,
     botTarget: -1,
     botPersonality: 0,
+    botAimX: 0,
+    botAimY: 0,
+    botAimValid: false,
     isLaNina: false,
     farAccum: 0,
     stats: emptyStats(),
@@ -249,6 +252,7 @@ export function respawnBot(w: WorldState, s: Storm): void {
   s.botState = 0;
   s.botTimer = 0;
   s.botTarget = -1;
+  s.botAimValid = false;
   s.stats = emptyStats();
   s.name = STORM_NAMES[Math.floor(rand(w) * STORM_NAMES.length)];
   s.isLaNina = false;

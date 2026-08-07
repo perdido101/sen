@@ -1,0 +1,29 @@
+{
+  "name": "superelnino",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SUPER EL NINO - real-time io-style storm arena. Publisher: WildBox.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "gen:terrain": "node tools/genTerrain.mjs",
+    "sim:determinism": "node tools/headless.mjs",
+    "check:purity": "node scripts/check-sim-purity.mjs",
+    "test": "npm run check:purity && npm run sim:determinism && npm run typecheck"
+  },
+  "dependencies": {
+    "howler": "^2.2.4",
+    "pixi.js": "^8.6.6"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.12",
+    "playwright": "^1.62.1",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vite-plugin-pwa": "^0.21.1"
+  }
+}

@@ -229,6 +229,7 @@ export class UI {
 
     box.append(
       mk('sound', 'set.sound'),
+      mk('pointerSteer', 'set.pointer'),
       mk('calm', 'set.calm'),
       mk('debug', 'set.debug'),
       mk('harsh', 'set.harsh'),
@@ -378,7 +379,7 @@ export class UI {
     let badgesHtml = '';
     if (m.newBadges.length > 0) {
       badgesHtml =
-        `<div class="over-sub">${escapeHtml(t('over.newBadges'))}</div><div class="badge-grid">` +
+        `<div class="over-sub">${escapeHtml(t('over.newBadges'))}</div><div class="badge-row">` +
         m.newBadges
           .map(
             (b) =>

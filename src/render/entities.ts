@@ -52,8 +52,11 @@ const CITY_STYLE = new TextStyle({
   stroke: { color: 0x131c26, width: 4, join: 'round' },
 });
 
+const CLS_AIR = 6;
+
 export class EntitiesView {
   readonly buildingLayer = new Container();
+  readonly airLayer = new Container();
   readonly propLayer = new Container();
   readonly manLayer = new Container();
   readonly debrisLayer = new Container();
@@ -63,16 +66,18 @@ export class EntitiesView {
   private props = new SpritePool();
   private men = new SpritePool();
   private debris = new SpritePool();
+  private air = new SpritePool();
   private labels: Text[] = [];
   private labelUsed = 0;
 
-  counts = { props: 0, men: 0, debris: 0, buildings: 0 };
+  counts = { props: 0, men: 0, debris: 0, buildings: 0, air: 0 };
 
   constructor(private art: Art) {
     this.buildingLayer.addChild(this.buildings.layer);
     this.propLayer.addChild(this.props.layer);
     this.manLayer.addChild(this.men.layer);
     this.debrisLayer.addChild(this.debris.layer);
+    this.airLayer.addChild(this.air.layer);
   }
 
   private label(): Text {
@@ -127,24 +132,54 @@ export class EntitiesView {
     this.buildings.end();
     for (let i = this.labelUsed; i < this.labels.length; i++) this.labels[i].visible = false;
 
-    // --- props -------------------------------------------------------------
+    // --- props, and the traffic among them ---------------------------------
     this.props.begin();
+    this.air.begin();
     for (const chunk of w.chunks.values()) {
       const list = chunk.props;
       for (let p = 0; p < list.length; p++) {
         const pr = list[p];
-        if (!pr.alive || !cam.visible(pr.x, pr.y, pr.r + 20)) continue;
+        if (!pr.alive || !cam.visible(pr.x, pr.y, pr.r + 40)) continue;
+
+        if (pr.cls === CLS_AIR) {
+          // Aircraft fly over everything, so they get their own layer and a
+          // dropped shadow to sell the altitude from directly above.
+          const sh = this.air.next();
+          sh.texture = this.art.props[pr.type];
+          sh.x = cam.sx(pr.x) + 16 * z;
+          sh.y = cam.sy(pr.y) + 22 * z;
+          sh.scale.set(z * 0.9);
+          // The nose art points up the texture, so add a quarter turn.
+          sh.rotation = pr.ang + Math.PI / 2;
+          sh.tint = 0x000000;
+          sh.alpha = 0.22;
+
+          const sp = this.air.next();
+          sp.texture = this.art.props[pr.type];
+          sp.x = cam.sx(pr.x);
+          sp.y = cam.sy(pr.y);
+          sp.scale.set(z);
+          sp.rotation = pr.ang + Math.PI / 2;
+          sp.tint = 0xffffff;
+          sp.alpha = 1;
+          continue;
+        }
+
         const sp = this.props.next();
         sp.texture = this.art.props[pr.type];
         sp.x = cam.sx(pr.x);
         sp.y = cam.sy(pr.y);
         sp.scale.set(z);
-        // Deterministic per-prop rotation so the world does not shimmer.
-        sp.rotation = ((pr.x * 7.3 + pr.y * 3.1) % 6.283) * (pr.cls === 1 ? 1 : 0.35);
+        sp.rotation =
+          pr.spd > 0
+            ? pr.ang + Math.PI / 2
+            : // Deterministic per-prop rotation so the world does not shimmer.
+              ((pr.x * 7.3 + pr.y * 3.1) % 6.283) * (pr.cls === 1 ? 1 : 0.35);
         sp.alpha = 1;
       }
     }
     this.props.end();
+    this.air.end();
 
     // --- stickmen: the game's juice ---------------------------------------
     this.men.begin();
@@ -197,5 +232,6 @@ export class EntitiesView {
     this.counts.props = this.props.count;
     this.counts.men = this.men.count;
     this.counts.debris = this.debris.count;
+    this.counts.air = this.air.count;
   }
 }

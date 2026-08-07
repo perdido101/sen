@@ -1,9 +1,9 @@
 /**
  * Chunked procedural props.
  *
- * The world is diced into 512x512 cells, generated on demand within range of
- * any storm and seeded by hash(worldSeed, cellX, cellY) so every client
- * produces identical props without touching the world RNG order.
+ * The world is diced into 512x512 cells, generated on demand around the player
+ * and seeded by hash(worldSeed, cellX, cellY) so every client produces
+ * identical props without touching the world RNG order.
  */
 
 import {
@@ -15,7 +15,7 @@ import {
   wrapX,
 } from './constants.ts';
 import { Stream, hash3, valueNoise } from './rng.ts';
-import { BIOME_SCATTER, PROP_KINDS, pickFromTable } from './props.ts';
+import { BIOME_SCATTER, CLASS_SPEED, PROP_KINDS, pickFromTable } from './props.ts';
 import { sampleTerrain } from './terrain.ts';
 import { ManState } from './types.ts';
 import type { Chunk, Prop, WorldState } from './types.ts';
@@ -23,10 +23,19 @@ import type { Chunk, Prop, WorldState } from './types.ts';
 export const CHUNK_COLS = Math.ceil(WORLD_W / CHUNK_SIZE);
 export const CHUNK_ROWS = Math.ceil(WORLD_H / CHUNK_SIZE);
 
-/** Props are generated near any storm; stickmen only near the player. */
+/**
+ * Props and stickmen exist around the player only.
+ *
+ * At 32x16 cells a whole-world prop field is tens of thousands of entities,
+ * and inserting all of them into the spatial hash every frame costs more than
+ * the rest of the simulation put together. Bots feed on cities, open water and
+ * the debris a kill scatters - none of which live in chunks - so this costs
+ * them nothing and buys the frame budget back.
+ */
 export const PROP_RANGE = CHUNK_SIZE * 2.2;
 export const MAN_RANGE = CHUNK_SIZE * 2.2;
 const KEEP_RANGE = CHUNK_SIZE * 3.4;
+const CLS_AIR = 6;
 
 export function chunkKey(cx: number, cy: number): number {
   const x = ((cx % CHUNK_COLS) + CHUNK_COLS) % CHUNK_COLS;
@@ -74,12 +83,17 @@ function generateChunk(w: WorldState, cx: number, cy: number): Chunk {
     const id = pickFromTable(scatter.table, st.next());
     const kind = PROP_KINDS[id];
 
+    // Aircraft are in the air, so the ground under them is nobody's business.
     // Ships belong at sea, everything else on land. Ocean props are edible -
     // the late game needs something to chew on out there.
-    const wantsWater = kind.cls === 4 || kind.name === 'island' || kind.name === 'palmislet';
-    if (wantsWater !== t.water) continue;
-    if (t.ice && !wantsWater) continue;
+    if (kind.cls !== CLS_AIR) {
+      const wantsWater = kind.cls === 4 || kind.name === 'island' || kind.name === 'palmislet';
+      if (wantsWater !== t.water) continue;
+      if (t.ice && !wantsWater) continue;
+    }
 
+    // Ships and aircraft get a heading and a speed; everything else is rooted.
+    const speed = CLASS_SPEED[kind.cls];
     props.push({
       x: wrapX(px),
       y: py,
@@ -88,6 +102,10 @@ function generateChunk(w: WorldState, cx: number, cy: number): Chunk {
       mass: kind.mass,
       r: kind.r,
       alive: true,
+      // Mostly east-west traffic, which reads better on a wrapping world than
+      // a uniform scatter of headings.
+      ang: st.chance(0.5) ? st.range(-0.5, 0.5) : Math.PI + st.range(-0.5, 0.5),
+      spd: speed === undefined ? 0 : st.range(speed[0], speed[1]),
     });
   }
 
@@ -190,43 +208,29 @@ function ensureChunk(w: WorldState, cx: number, cy: number): Chunk | null {
  */
 export function streamChunks(w: WorldState): void {
   const player = w.storms[w.playerId];
+  if (player === undefined || !player.alive) return;
 
-  for (let s = 0; s < w.storms.length; s++) {
-    const st = w.storms[s];
-    if (!st.alive) continue;
-    const c0 = Math.floor((st.x - PROP_RANGE) / CHUNK_SIZE);
-    const c1 = Math.floor((st.x + PROP_RANGE) / CHUNK_SIZE);
-    const r0 = Math.floor((st.y - PROP_RANGE) / CHUNK_SIZE);
-    const r1 = Math.floor((st.y + PROP_RANGE) / CHUNK_SIZE);
-    for (let cy = r0; cy <= r1; cy++) {
-      for (let cx = c0; cx <= c1; cx++) {
-        const c = ensureChunk(w, cx, cy);
-        if (c === null) continue;
-        if (player !== undefined && player.alive) {
-          const [px, py] = chunkCentre(c.cx, c.cy);
-          const dx = wrapDeltaX(player.x, px);
-          const dy = py - player.y;
-          if (dx * dx + dy * dy < MAN_RANGE * MAN_RANGE) populateChunk(w, c);
-        }
-      }
+  const c0 = Math.floor((player.x - PROP_RANGE) / CHUNK_SIZE);
+  const c1 = Math.floor((player.x + PROP_RANGE) / CHUNK_SIZE);
+  const r0 = Math.floor((player.y - PROP_RANGE) / CHUNK_SIZE);
+  const r1 = Math.floor((player.y + PROP_RANGE) / CHUNK_SIZE);
+  for (let cy = r0; cy <= r1; cy++) {
+    for (let cx = c0; cx <= c1; cx++) {
+      const c = ensureChunk(w, cx, cy);
+      if (c === null) continue;
+      const [px, py] = chunkCentre(c.cx, c.cy);
+      const dx = wrapDeltaX(player.x, px);
+      const dy = py - player.y;
+      if (dx * dx + dy * dy < MAN_RANGE * MAN_RANGE) populateChunk(w, c);
     }
   }
 
   // Unload far cells and pool the objects.
   for (const [key, c] of w.chunks) {
     const [px, py] = chunkCentre(c.cx, c.cy);
-    let near = false;
-    for (let s = 0; s < w.storms.length; s++) {
-      const st = w.storms[s];
-      if (!st.alive) continue;
-      const dx = wrapDeltaX(st.x, px);
-      const dy = py - st.y;
-      if (dx * dx + dy * dy < KEEP_RANGE * KEEP_RANGE) {
-        near = true;
-        break;
-      }
-    }
-    if (near) continue;
+    const dx = wrapDeltaX(player.x, px);
+    const dy = py - player.y;
+    if (dx * dx + dy * dy < KEEP_RANGE * KEEP_RANGE) continue;
     for (let i = 0; i < c.stickmen.length; i++) {
       const m = w.stickmen[c.stickmen[i]];
       if (m !== undefined && m.chunk === key) m.active = false;

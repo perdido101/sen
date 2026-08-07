@@ -166,11 +166,15 @@ export interface Prop {
   y: number;
   /** Prop art index. */
   type: number;
-  /** 0 generic, 1 tree, 2 cow, 3 car, 4 ship, 5 building. */
+  /** 0 generic, 1 tree, 2 cow, 3 car, 4 ship, 5 building, 6 aircraft. */
   cls: number;
   mass: number;
   r: number;
   alive: boolean;
+  /** Heading, radians. Only meaningful when spd > 0. */
+  ang: number;
+  /** World units per second. 0 for everything rooted to the ground. */
+  spd: number;
 }
 
 export interface Chunk {

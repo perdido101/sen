@@ -24,6 +24,7 @@ import {
   STICKMAN_MASS,
   WIN_HOLD_TIME,
   WORLD_H,
+  WORLD_W,
   clamp,
   coreRadius,
   eyeRadius,
@@ -60,6 +61,7 @@ const KIND_DEBRIS = 0;
 const KIND_MAN = 1;
 const KIND_PROP = 2;
 const PROP_STRIDE = 4096;
+const CLS_AIR = 6;
 
 // ---------------------------------------------------------------------------
 // Loose debris pool
@@ -202,8 +204,76 @@ function updateStickmen(w: WorldState, dt: number): void {
       }
     }
 
-    m.x = wrapX(m.x + m.vx * dt);
-    m.y = clamp(m.y + m.vy * dt, 0, WORLD_H);
+    const nx = wrapX(m.x + m.vx * dt);
+    const ny = clamp(m.y + m.vy * dt, 0, WORLD_H);
+
+    if (m.state === ManState.Caught) {
+      // Already airborne and spiralling in - the sea is not their problem now.
+      m.x = nx;
+      m.y = ny;
+      continue;
+    }
+
+    // People run on land. A panicking crowd will otherwise sprint straight off
+    // a headland and jog around on open water. Try the full move, then each
+    // axis alone, so they slide along a coastline instead of sticking to it.
+    if (!blocked(w, nx, ny)) {
+      m.x = nx;
+      m.y = ny;
+    } else if (!blocked(w, nx, m.y)) {
+      m.x = nx;
+      m.vy = 0;
+    } else if (!blocked(w, m.x, ny)) {
+      m.y = ny;
+      m.vx = 0;
+    } else {
+      m.vx = 0;
+      m.vy = 0;
+    }
+  }
+}
+
+/** Sea and ice are both off-limits on foot. */
+function blocked(w: WorldState, x: number, y: number): boolean {
+  const t = sampleTerrain(w.terrain, x, y);
+  return t.water || t.ice;
+}
+
+// ---------------------------------------------------------------------------
+// Traffic
+// ---------------------------------------------------------------------------
+
+/**
+ * Ships and aircraft move. A sea full of parked container ships reads as
+ * scenery; a sea with traffic in it reads as a world, and the late game is
+ * mostly spent out there.
+ */
+function updateTraffic(w: WorldState, dt: number): void {
+  for (const chunk of w.chunks.values()) {
+    const props = chunk.props;
+    for (let i = 0; i < props.length; i++) {
+      const p = props[i];
+      if (!p.alive || p.spd === 0) continue;
+
+      const nx = wrapX(p.x + Math.cos(p.ang) * p.spd * dt);
+      const ny = p.y + Math.sin(p.ang) * p.spd * dt;
+
+      if (p.cls === CLS_AIR) {
+        // Aircraft overfly everything; they only turn at the ice caps.
+        p.x = nx;
+        p.y = clamp(ny, 60, WORLD_H - 60);
+        if (p.y <= 60 || p.y >= WORLD_H - 60) p.ang = -p.ang;
+        continue;
+      }
+
+      // Ships stay at sea: bounce off any coast they run into.
+      if (ny < 40 || ny > WORLD_H - 40 || !sampleTerrain(w.terrain, nx, ny).water) {
+        p.ang += 2.1;
+        continue;
+      }
+      p.x = nx;
+      p.y = ny;
+    }
   }
 }
 
@@ -440,7 +510,7 @@ function isGreenland(w: WorldState, x: number, y: number): boolean {
   const t = sampleTerrain(w.terrain, x, y);
   if (t.water) return false;
   // Greenland sits between Canada and Iceland in world-x on this projection.
-  const tx = x / 8192;
+  const tx = x / WORLD_W;
   return tx > 0.775 && tx < 0.885;
 }
 
@@ -545,6 +615,7 @@ export function step(w: WorldState, inputs: Map<number, Input>): void {
   }
 
   updateDebris(w, dt);
+  updateTraffic(w, dt);
   resolveCollisions(w);
   updateCities(w, dt);
 

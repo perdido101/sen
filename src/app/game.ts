@@ -27,6 +27,7 @@ import { step } from '../sim/step.ts';
 import { sampleTerrain } from '../sim/terrain.ts';
 import type { TerrainData, WorldState } from '../sim/types.ts';
 import { createWorld } from '../sim/world.ts';
+import { TouchControls } from '../ui/touch.ts';
 import { UI, dailySeed } from '../ui/ui.ts';
 import { FixedLoop } from './loop.ts';
 import { InputSource } from './input.ts';
@@ -38,6 +39,7 @@ export class Game {
   private renderer: GameRenderer;
   private ui: UI;
   private input: InputSource;
+  private touch = new TouchControls();
   private inputs = new InputCollector();
   private tracker = new RunTracker();
   private clip = new ClipRecorder();
@@ -77,7 +79,9 @@ export class Game {
     });
     this.ui.mapSlot.append(this.renderer.minimap.canvas);
 
-    this.input = new InputSource(app.canvas as unknown as HTMLElement);
+    document.getElementById('ui')!.append(this.touch.root);
+    this.input = new InputSource(app.canvas as unknown as HTMLElement, this.touch);
+    this.input.pointerSteer = s.pointerSteer;
     this.input.onGesture = () => {
       if (s.sound) void audio.start();
     };
@@ -141,6 +145,7 @@ export class Game {
       audio.calm = value || this.reduced;
       this.renderer.reducedMotion = value || this.reduced;
     }
+    if (key === 'pointerSteer') this.input.pointerSteer = value;
     if (key === 'debug' && !value) this.ui.setDebug(null);
     if (key === 'harsh') this.world.instantDeathOnShred = value;
   }
@@ -168,6 +173,7 @@ export class Game {
     this.pushBadges(awardMeta());
 
     this.ui.show('game');
+    this.touch.setActive(true);
     if (load().sound) void audio.start();
     audio.setRank(1);
     this.clip.start(this.app.canvas as unknown as HTMLCanvasElement);
@@ -175,6 +181,7 @@ export class Game {
 
   private toMenu(): void {
     this.phase = 'menu';
+    this.touch.setActive(false);
     this.clip.stop();
     this.ui.show('menu');
   }
@@ -270,6 +277,7 @@ export class Game {
     const p = w.storms[w.playerId];
     const won = w.winner === w.playerId;
     this.phase = 'over';
+    this.touch.setActive(false);
 
     const s = load();
     save({

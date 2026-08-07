@@ -37,7 +37,18 @@ export const PROP_KINDS: PropKind[] = [
   { name: 'buoy', cls: 4, mass: 2, r: 9, debris: 6 },
   { name: 'island', cls: 0, mass: 12, r: 30, debris: 2 },
   { name: 'palmislet', cls: 0, mass: 6, r: 20, debris: 2 },
+  { name: 'airliner', cls: 6, mass: 16, r: 26, debris: 3 },
+  { name: 'cargoplane', cls: 6, mass: 20, r: 30, debris: 3 },
 ];
+
+/**
+ * How fast each class moves, world units per second. Ships crawl, aircraft
+ * cross the map; everything else is nailed down.
+ */
+export const CLASS_SPEED: Record<number, [number, number]> = {
+  4: [14, 34],
+  6: [150, 240],
+};
 
 export const PROP_ID: Record<string, number> = {};
 for (let i = 0; i < PROP_KINDS.length; i++) PROP_ID[PROP_KINDS[i].name] = i;
@@ -62,26 +73,33 @@ export const BIOME_SCATTER: Record<
       s('tree', 10), s('fence', 14), s('cow', 12), s('barn', 4), s('car', 9),
       s('haybale', 8), s('windmill', 3), s('watertower', 2), s('house', 5),
       s('signpost', 6), s('rock', 4),
+      s('airliner', 2), s('cargoplane', 1),
     ],
   },
   [Biome.Forest]: {
     density: 88,
     table: [
       s('tree', 40), s('pine', 34), s('bush', 16), s('rock', 5), s('house', 2),
-      s('fence', 3),
+      s('fence', 3), s('airliner', 2),
     ],
   },
   [Biome.Desert]: {
     density: 20,
-    table: [s('cactus', 30), s('rock', 22), s('signpost', 6), s('car', 4), s('haybale', 2)],
+    table: [
+      s('cactus', 30), s('rock', 22), s('signpost', 6), s('car', 4),
+      s('haybale', 2), s('airliner', 2),
+    ],
   },
   [Biome.Urban]: {
     density: 62,
-    table: [s('house', 30), s('car', 34), s('signpost', 14), s('tree', 10), s('watertower', 4)],
+    table: [
+      s('house', 30), s('car', 34), s('signpost', 14), s('tree', 10),
+      s('watertower', 4), s('airliner', 4), s('cargoplane', 2),
+    ],
   },
   [Biome.Mountain]: {
     density: 34,
-    table: [s('rock', 40), s('pine', 26), s('bush', 8)],
+    table: [s('rock', 40), s('pine', 26), s('bush', 8), s('airliner', 1)],
   },
   [Biome.Ice]: {
     density: 6,
@@ -92,6 +110,7 @@ export const BIOME_SCATTER: Record<
     table: [
       s('containership', 8), s('tanker', 5), s('oilplatform', 4),
       s('fishingboat', 12), s('buoy', 14), s('island', 4), s('palmislet', 5),
+      s('airliner', 3), s('cargoplane', 2),
     ],
   },
 };

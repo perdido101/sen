@@ -18,6 +18,8 @@ export interface Save {
   calm: boolean;
   debug: boolean;
   harsh: boolean;
+  /** Mouse-position steering. Off means keys (and the stick) only. */
+  pointerSteer: boolean;
 }
 
 const DEFAULT: Save = {
@@ -31,6 +33,7 @@ const DEFAULT: Save = {
   calm: false,
   debug: false,
   harsh: false,
+  pointerSteer: true,
 };
 
 let cache: Save | null = null;

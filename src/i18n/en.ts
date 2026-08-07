@@ -40,6 +40,7 @@ export default {
   'set.calm': 'Calm mode',
   'set.debug': 'Debug overlay',
   'set.harsh': 'Harsh shred (instant death)',
+  'set.pointer': 'Mouse steering',
 
   'pwa.install': 'Install Super El Niño?',
   'pwa.yes': 'Install',

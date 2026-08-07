@@ -213,6 +213,43 @@ function signpost(r: number): Graphics {
   return g;
 }
 
+/** Top-down airliner: fuselage, swept wings, tailplane. */
+function plane(r: number, body: number, wing: number): Graphics {
+  const g = new Graphics();
+  const L = r * 2;
+  const W = r * 1.7;
+  // Wings first, so the fuselage reads on top of them.
+  g.moveTo(0, -L * 0.06)
+    .lineTo(-W / 2, L * 0.22)
+    .lineTo(-W / 2, L * 0.32)
+    .lineTo(0, L * 0.12)
+    .lineTo(W / 2, L * 0.32)
+    .lineTo(W / 2, L * 0.22)
+    .closePath()
+    .fill(wing)
+    .stroke({ width: 2.5, color: INK });
+  // Tailplane.
+  g.moveTo(0, L * 0.3)
+    .lineTo(-W * 0.22, L * 0.46)
+    .lineTo(-W * 0.22, L * 0.5)
+    .lineTo(W * 0.22, L * 0.5)
+    .lineTo(W * 0.22, L * 0.46)
+    .closePath()
+    .fill(wing)
+    .stroke({ width: 2, color: INK });
+  // Fuselage.
+  g.moveTo(0, -L / 2)
+    .lineTo(r * 0.26, -L * 0.24)
+    .lineTo(r * 0.26, L * 0.46)
+    .lineTo(-r * 0.26, L * 0.46)
+    .lineTo(-r * 0.26, -L * 0.24)
+    .closePath()
+    .fill(body)
+    .stroke({ width: 2.5, color: INK });
+  g.circle(0, -L * 0.28, r * 0.14).fill(0x2c3a4a);
+  return g;
+}
+
 function propGraphic(name: string, r: number): Graphics {
   switch (name) {
     case 'tree': return leafyTree(r, 0x5c9450);
@@ -236,6 +273,8 @@ function propGraphic(name: string, r: number): Graphics {
     case 'buoy': return buoy(r * 0.8);
     case 'island': return island(r, false);
     case 'palmislet': return island(r, true);
+    case 'airliner': return plane(r, 0xe8ecf0, 0xb8c0c8);
+    case 'cargoplane': return plane(r, 0xc8a23a, 0x9aa0a8);
     default: return box(r, r, C.storm);
   }
 }

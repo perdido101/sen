@@ -74,6 +74,7 @@ export class GameRenderer {
       this.entities.manLayer,
       this.entities.debrisLayer,
       this.storms.layer,
+      this.entities.airLayer,
       this.particles.layer,
       this.entities.cityLabelLayer,
       this.particles.numberLayer,
@@ -248,7 +249,7 @@ export class GameRenderer {
     if (p !== undefined) this.cam.snapTo(p.x, p.y);
   }
 
-  get counts(): { props: number; men: number; debris: number; buildings: number } {
+  get counts(): { props: number; men: number; debris: number; buildings: number; air: number } {
     return this.entities.counts;
   }
 

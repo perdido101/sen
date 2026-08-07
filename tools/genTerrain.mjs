@@ -16,7 +16,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { PNG } from 'pngjs';
 import { CITY_DATA } from '../src/data/cities.ts';
-import { MAP_LON_ORIGIN, CITY_RADIUS } from '../src/sim/constants.ts';
+import { MAP_LON_ORIGIN, CITY_RADIUS, WORLD_W, WORLD_H } from '../src/sim/constants.ts';
 import { valueNoise } from '../src/sim/rng.ts';
 
 const W = 4096;
@@ -362,13 +362,13 @@ for (let py = 0; py < H; py++) {
 
 console.log('stamping cities...');
 
-const PX_PER_WORLD = W / 8192;
+const PX_PER_WORLD = W / WORLD_W;
 
 for (const c of CITY_DATA) {
-  const worldX = (((c.lon - MAP_LON_ORIGIN + 360) % 360) / 360) * 8192;
-  const worldY = ((90 - c.lat) / 180) * 4096;
+  const worldX = (((c.lon - MAP_LON_ORIGIN + 360) % 360) / 360) * WORLD_W;
+  const worldY = ((90 - c.lat) / 180) * WORLD_H;
   const cx = Math.round(worldX * PX_PER_WORLD);
-  const cy = Math.round(worldY * (H / 4096));
+  const cy = Math.round(worldY * (H / WORLD_H));
   // Only the dense core gets stamped urban. The gameplay city radius is much
   // wider than its built-up footprint - the -35% drain slowdown comes from the
   // city state, not from the biome.

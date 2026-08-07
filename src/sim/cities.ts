@@ -45,7 +45,7 @@ export function buildCities(): City[] {
   return out;
 }
 
-const BUILDINGS_PER_TIER = [0, 190, 105, 56];
+const BUILDINGS_PER_TIER = [0, 210, 120, 64];
 
 /**
  * A deterministic block grid: streets on a jittered lattice, buildings as

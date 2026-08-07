@@ -49,10 +49,23 @@ export class Camera {
     this.punch = 1;
   }
 
+  /**
+   * How much the viewport itself scales the zoom.
+   *
+   * Zoom driven by mass alone means a 390px phone shows a third of the world a
+   * 1100px desktop does, which is a different game rather than a smaller
+   * window: rivals arrive with no warning and the debris field fills the
+   * screen. Narrow screens pull back so the visible area stays comparable,
+   * with a floor so sprites never shrink into confetti.
+   */
+  private fit(): number {
+    return clamp(this.w / 900, 0.68, 1);
+  }
+
   follow(x: number, y: number, ang: number, mass: number, dt: number): void {
     const f = sizeFactor(mass);
     // Zoom out with mass, 1.0 -> 0.62.
-    this.targetZoom = lerp(1.0, 0.62, f);
+    this.targetZoom = lerp(1.0, 0.62, f) * this.fit();
 
     const tx = x + Math.cos(ang) * LEAD;
     const ty = y + Math.sin(ang) * LEAD;

@@ -9,8 +9,18 @@
 // World
 // ---------------------------------------------------------------------------
 
-export const WORLD_W = 8192;
-export const WORLD_H = 4096;
+/**
+ * World size, in world units, at Earth's 2:1 equirectangular aspect.
+ *
+ * One world unit is 40075km / 16384 = 2.45km, which makes the storms
+ * themselves true to scale: a capped core radius of 95 units is a 466km-wide
+ * hurricane, which is what a real major hurricane measures. Cities are
+ * deliberately NOT to that scale - a real megacity would be 16 units across,
+ * smaller than the storm eating it, and "pinned and slow while you chew"
+ * would become a single frame. El Nino here is a costume, not a model.
+ */
+export const WORLD_W = 16384;
+export const WORLD_H = 8192;
 /** The equator is a real gameplay line: Coriolis flips here. */
 export const EQUATOR_Y = WORLD_H / 2;
 
@@ -250,7 +260,7 @@ export const CITY_REBUILD_TIME = 90;
  * Larger than this and neighbouring cities merge into one continent-wide
  * suburb.
  */
-export const CITY_RADIUS = [0, 300, 200, 130];
+export const CITY_RADIUS = [0, 270, 180, 118];
 
 // ---------------------------------------------------------------------------
 // Stickmen
@@ -268,10 +278,10 @@ export const CHASER_CHANCE = 0.004;
 // ---------------------------------------------------------------------------
 
 /** Equatorial Pacific warm pool, in world units. The named place everyone converges on. */
-export const WARM_POOL_X = 3527;
+export const WARM_POOL_X = (((175 - MAP_LON_ORIGIN + 360) % 360) / 360) * WORLD_W;
 export const WARM_POOL_Y = EQUATOR_Y;
-export const WARM_POOL_RX = 900;
-export const WARM_POOL_RY = 380;
+export const WARM_POOL_RX = WORLD_W * 0.105;
+export const WARM_POOL_RY = WORLD_H * 0.085;
 export const WIN_HOLD_TIME = 60;
 
 /** Normalised distance from the warm pool centre; <= 1 is inside. */

@@ -11,7 +11,8 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const OUT = process.argv[2] ?? '/tmp/sen-offline';
-const PORT = 4173;
+const PORT = Number(process.env.SEN_PORT ?? 4173);
+const BASE = process.env.SEN_BASE ?? '/';
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({
@@ -24,7 +25,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
-await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'load' });
+await page.goto(`http://localhost:${PORT}${BASE}`, { waitUntil: 'load' });
 await page.waitForSelector('.panel .wordmark', { timeout: 60000 });
 
 // Wait for the worker to take control and finish precaching.
@@ -54,7 +55,7 @@ const cached = await page.evaluate(async () => {
   }
   // Workbox precaches with a __WB_REVISION__ query, so an exact-URL match
   // misses it and would report a false negative.
-  const terrain = await caches.match('/terrain.png', { ignoreSearch: true });
+  const terrain = await caches.match(`${document.baseURI}terrain.png`, { ignoreSearch: true });
   return { names, total, perCache, hasTerrain: terrain !== undefined };
 });
 console.log(`precached: ${cached.total} entries ${JSON.stringify(cached.perCache)}`);

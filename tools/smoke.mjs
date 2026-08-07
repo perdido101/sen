@@ -23,6 +23,7 @@ const FORCE_WIN = process.argv.includes('--win');
 const WIDTH = arg('w', 900);
 const HEIGHT = arg('h', 1600);
 const PORT = arg('port', 4173);
+const BASE = process.env.SEN_BASE ?? '/';
 
 mkdirSync(OUT, { recursive: true });
 
@@ -41,7 +42,7 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
-await page.goto(`http://localhost:${PORT}/?debug`, { waitUntil: 'load' });
+await page.goto(`http://localhost:${PORT}${BASE}?debug`, { waitUntil: 'load' });
 
 // Wait for the menu, which only appears once the terrain has loaded.
 await page.waitForSelector('.panel .wordmark', { timeout: 45000 });

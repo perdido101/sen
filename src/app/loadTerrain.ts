@@ -5,7 +5,14 @@
 
 import type { TerrainData } from '../sim/types.ts';
 
-export async function loadTerrain(url = '/terrain.png'): Promise<TerrainData> {
+/**
+ * Resolved against the deploy base, not the site root: on GitHub Pages this
+ * lives at /sen/terrain.png, and an absolute /terrain.png would 404 into a
+ * blank screen.
+ */
+export const TERRAIN_URL = `${import.meta.env.BASE_URL}terrain.png`;
+
+export async function loadTerrain(url = TERRAIN_URL): Promise<TerrainData> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`terrain: ${res.status} ${res.statusText}`);
   const blob = await res.blob();

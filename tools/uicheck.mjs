@@ -9,7 +9,8 @@ import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const OUT = process.argv[2] ?? '/tmp/sen-ui';
-const PORT = 4173;
+const PORT = Number(process.env.SEN_PORT ?? 4173);
+const BASE = process.env.SEN_BASE ?? '/';
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch({
@@ -42,7 +43,7 @@ async function run(label, viewport) {
       }),
     );
   });
-  await page.goto(`http://localhost:${PORT}/?debug`, { waitUntil: 'load' });
+  await page.goto(`http://localhost:${PORT}${BASE}?debug`, { waitUntil: 'load' });
   await page.waitForSelector('.panel .wordmark', { timeout: 60000 });
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/${label}-menu.png` });

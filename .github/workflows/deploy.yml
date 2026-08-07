@@ -1,0 +1,101 @@
+name: Deploy
+
+# Builds the game and publishes it to GitHub Pages.
+#
+# The site lives at https://<owner>.github.io/<repo>/, so the build needs a
+# base path - a root-relative build deployed to a subpath is a blank screen
+# with a 404 on terrain.png. SEN_BASE feeds vite.config.ts, which is the only
+# place that knows about it.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/superelnino-build-uow6xt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; never cancel one midway or Pages is left half-updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Playwright is only used by the local browser harnesses; CI runs the
+      # headless checks, so do not pull ~400MB of browsers to build a page.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Check the simulation is headless and deterministic
+        # The architecture rule that protects multiplayer later: no Pixi, no
+        # DOM and no bare Math.random under src/sim, and 1000 steps twice with
+        # no renderer must produce byte-identical state.
+        run: npm test
+
+      - uses: actions/configure-pages@v5
+        id: pages
+        with:
+          # Turns Pages on the first time this runs, so nobody has to go and
+          # flip a settings toggle before the first deploy.
+          enablement: true
+
+      - name: Resolve the base path
+        id: base
+        # base_path is '/sen' for a project site and empty for a user site;
+        # normalise both to a value with exactly one trailing slash.
+        run: |
+          BP="${{ steps.pages.outputs.base_path }}"
+          [ -z "$BP" ] && BP="/"
+          case "$BP" in */) ;; *) BP="$BP/" ;; esac
+          echo "base=$BP" >> "$GITHUB_OUTPUT"
+          echo "base path is $BP"
+
+      - name: Build
+        env:
+          SEN_BASE: ${{ steps.base.outputs.base }}
+        run: npm run build
+
+      - name: Fail if the build did not pick up the base path
+        # A silent root-relative build is the one failure mode that still
+        # produces a green deploy and a broken site, so check the artifact
+        # rather than trusting the env var.
+        run: |
+          BASE="${{ steps.base.outputs.base }}"
+          echo "expecting base $BASE"
+          grep -q "src=\"${BASE}assets/" dist/index.html \
+            || { echo "index.html is not base-prefixed"; exit 1; }
+          test -f dist/terrain.png || { echo "terrain.png missing"; exit 1; }
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
+
+      - name: Say where it went
+        run: echo "Playable at ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
